@@ -2,16 +2,13 @@
 
 var Hapi = require('hapi');
 var MySQL = require('mysql');
-// Create a server with a host and port
 var server = new Hapi.Server();
 var SHA256 = require("crypto-js/sha256");
-
-
 
 const connection = MySQL.createConnection({
     host: 'localhost',
     user: 'root',
-    password: '',
+    password: 'haidt123',
     database: 'sateco'
 });
 
@@ -21,12 +18,10 @@ server.connection({
 });
 connection.connect();
 
-// Login the route
 server.route({
     method: 'POST',
     path: '/login',
     handler: function (request, reply) {
-        
         var username = request.payload.username;
         var password = request.payload.password;
         var orgPassword = SHA256(password);
@@ -36,75 +31,68 @@ server.route({
             if(results.length > 0){
                 reply({status : "200", results, message: "Success"});
             }else{
-                reply({status: "201", message: "Account not exist"});
+                reply({status: "201", message: "Error username / password"});
             }
         });
     }
 });
 
-// Signup the route
 server.route({
     method: 'POST',
     path: '/signup',
-
     handler: function (request, reply) {
-
         var username = request.payload.username;
         var password = request.payload.password;
         var orgPassword = SHA256(password);
-        
-        connection.query('INSERT INTO user (username,password,user_role) VALUES ("' + username + '","' + orgPassword + '","' + 2 + '")', function (error, results) {
+        connection.query('SELECT * FROM user WHERE username = "'+ username + '"', function (error, results) {
             if (error){
                 console.log(error);
                 reply({status: "201", message: "Error connect data"});
                 return;    
             }
-            reply({status: "200", results, message: "Success"});
+            if(results.length > 0){
+                reply({message: "Username "+ username +" already exist"});
+            }else{
+                connection.query('INSERT INTO user (username,password,user_role) VALUES ("' + username + '","' + orgPassword + '","' + 2 + '")', function (err, res) {
+                    if (error){
+                        console.log(error);
+                        reply({status: "201", message: "Error connect data"});
+                        return;
+                    }
+                    reply({status: "200", results, message: "Success"});
+                });
+            }
         });
     }
 });
 
-// Change password the route
 server.route({
     method: 'POST',
     path: '/changepassword',
-
     handler: function (request, reply) {
-
-        var oldPass = request.payload.oldPassword;
+        var userId = request.payload.userId;
+        var oldPassword = request.payload.oldPassword;
         var newPassword = request.payload.newPassword;
-        var orgPassword = SHA256(newPassword);
-
-
-        
-        // connection.query('INSERT INTO user (username,password,user_role) VALUES ("' + username + '","' + orgPassword + '","' + 2 + '")', function (error, results) {
-        //     if (error){
-        //         console.log(error);
-        //         reply({status: "201", message: "Error connect data"});
-        //         return;    
-        //     }
-        //     reply({status: "200", results, message: "Success"});
-        // });
-    }
-});
-
-var checkLogin=function (request, reply, next) {
-    if(request.session.username){
-        next();
-    }else{
-        reply({"no": 1});
-    }
-};
-
-// Add the route
-server.route({
-    method: 'GET',
-    path: '/user',
-    handler: function (request, reply) {
-        connection.query('SELECT userid, username, password, user_role FROM user', function (error, results) {
-            if (error) throw error;
-            console.log(results);
-            reply(results);
+        var orgOldPassword = SHA256(oldPassword);
+        var orgNewPassword = SHA256(newPassword);
+        connection.query('SELECT * FROM user WHERE userid = "'+ userId +'" AND password = "'+ orgOldPassword +'"', function (error, results) {
+            if (error){
+                console.log(error);
+                reply({status: "201", message: "Error connect data"});
+                return;    
+            }
+            if(results.length == 0){
+                reply({status: "202", message: "Error password old"});
+            }else{
+                connection.query('UPDATE user SET password = "'+ orgNewPassword +'"', function (err, res) {
+                    if (error){
+                        console.log(error);
+                        reply({status: "201", message: "Error connect data"});
+                        return;    
+                    }
+                    reply({status: "200", message: "Update password success"});
+                });
+            }
         });
     }
 });
