@@ -97,6 +97,60 @@ server.route({
     }
 });
 
+server.route({
+    method: 'GET',
+    path: '/getDataDeviceLast',
+    handler: function (request, reply) {
+        var query = 'SELECT * FROM `device` WHERE updated IN (SELECT max(updated) FROM `device`)';
+        connection.query(query, function (error, results) {
+            if (error){
+                console.log(error);
+                reply({status: "201", message: "Error connect data"});
+                return;    
+            }
+            reply({status: "200", results});
+        });
+    }
+});
+
+// Start the server
+server.start((err) => {
+
+    if (err) {
+        throw err;
+    }
+    console.log('Server Sateco running at:', server.info.uri);
+});
+
+var intervalObject = setInterval(function () { 
+        getDataLast(); 
+    }, 10000);
+
+
+function getDataLast() {
+    var query = "SELECT * FROM `device` WHERE updated IN (SELECT max(updated) FROM `device`)";
+    connection.query(query, function (error, results) {
+        if (error){
+            console.log(error);
+            return;
+        }
+        insertDataDevice(results[0]);
+    });
+}
+
+function insertDataDevice(device) {
+    var lat = parseFloat(device.lat) + 0.01;
+    var lng = parseFloat(device.lng) + 0.01;
+    var query = 'INSERT INTO `device`(`lat`, `lng`, `userid`) VALUES ('+ lat +', '+ lng +', '+ 9 +')';
+
+    connection.query(query, function (error, results) {
+        if (error){
+            console.log(error);
+            return;
+        }
+    });
+}
+
 // server.route({
 //     method: 'GET',
 //     path: '/user/{uid}',
@@ -118,13 +172,3 @@ server.route({
 //         }
 //     }
 // });
-
-
-// Start the server
-server.start((err) => {
-
-    if (err) {
-        throw err;
-    }
-    console.log('Server Sateco running at:', server.info.uri);
-});
