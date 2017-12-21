@@ -124,7 +124,7 @@ server.start((err) => {
 
 var intervalObject = setInterval(function () { 
         getDataLast(); 
-    }, 10000);
+    }, 5*60*1000);
 
 
 function getDataLast() {
